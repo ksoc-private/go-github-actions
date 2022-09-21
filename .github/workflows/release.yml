@@ -2,14 +2,15 @@ name: release
 
 on:
   workflow_call:
+    inputs:
+      gcr-json-key:
+        type: string
+        required: true
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
       GITHUB_TOKEN:
         required: true
-      GCR_JSON_KEY:
-        required: true
-
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -61,7 +62,7 @@ jobs:
         with:
           registry: us.gcr.io
           username: _json_key
-          password: ${{ secrets.GCR_JSON_KEY }}
+          password: ${{ inputs.gcr-json-key }}
 
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v3
