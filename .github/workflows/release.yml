@@ -7,6 +7,8 @@ on:
         required: true
       GITHUB_TOKEN:
         required: true
+      PRIVATE_GCR_JSON_KEY:
+        required: true
 
 jobs:
   version:
