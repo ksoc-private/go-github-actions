@@ -7,7 +7,7 @@ on:
         required: true
       GITHUB_TOKEN:
         required: true
-      PRIVATE_GCR_JSON_KEY:
+      GCR_JSON_KEY:
         required: true
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
         with:
           registry: us.gcr.io
           username: _json_key
-          password: ${{ secrets.PRIVATE_GCR_JSON_KEY }}
+          password: ${{ secrets.GCR_JSON_KEY }}
 
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v3
