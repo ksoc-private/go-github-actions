@@ -1,0 +1,26 @@
+name: test
+
+on:
+  workflow_call:
+    secrets:
+      PERSONAL_ACCESS_TOKEN:
+        required: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+          check-latest: true # https://github.com/actions/setup-go#check-latest-version
+          cache: true # https://github.com/actions/setup-go#caching-dependency-files-and-build-outputs
+        env:
+          GOPRIVATE: "github.com/ksoc-private"
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+      - name: Test
+        run: go test ./...
