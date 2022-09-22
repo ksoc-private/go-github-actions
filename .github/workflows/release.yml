@@ -9,8 +9,7 @@ on:
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
-      GITHUB_TOKEN:
-        required: true
+
 jobs:
   version:
     runs-on: ubuntu-latest
