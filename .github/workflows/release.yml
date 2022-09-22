@@ -9,6 +9,10 @@ on:
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
+      PUBLIC_GCR_JSON_KEY:
+        required: true
+      PRIVATE_GCR_JSON_KEY:
+        required: true
 
 jobs:
   version:
@@ -61,7 +65,7 @@ jobs:
         with:
           registry: us.gcr.io
           username: _json_key
-          password: ${{ inputs.gcr-json-key }}
+          password: ${{ input.is-public-image == "true" && secrets.PUBLIC_GCR_JSON_KEY || secrets.PRIVATE_GCR_JSON_KEY }}
 
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v3
