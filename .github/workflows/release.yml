@@ -98,6 +98,6 @@ jobs:
         with:
           owner: ksoc-private
           repo: api-client-ts
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           workflow_file_name: draft-release.yml
           wait_workflow: false
