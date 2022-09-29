@@ -90,3 +90,14 @@ jobs:
         if: startsWith(github.ref , 'refs/tags/v') == false
         run: |
           make docker_push_all
+
+      # Ref: https://github.com/convictional/trigger-workflow-and-wait
+      - name: Update api-client-ts
+        if: startsWith(github.ref , 'refs/tags/v') == true
+        uses: convictional/trigger-workflow-and-wait@v1.6.3
+        with:
+          owner: ksoc-private
+          repo: api-client-ts
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow_file_name: draft-release.yml
+          wait_workflow: false
