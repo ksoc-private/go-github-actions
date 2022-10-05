@@ -1,4 +1,4 @@
-name: test
+name: build
 
 on:
   workflow_call:
@@ -22,5 +22,5 @@ jobs:
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
-      - name: Test
-        run: go test -race ./...
+      - name: Build
+        run: go build -race ./...
