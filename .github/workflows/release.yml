@@ -94,7 +94,7 @@ jobs:
       # Ref: https://github.com/convictional/trigger-workflow-and-wait
       - name: Update api-client-ts
         if: startsWith(github.ref , 'refs/tags/v') == true
-        uses: convictional/trigger-workflow-and-wait@v1.6.3
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
           owner: ksoc-private
           repo: api-client-ts
