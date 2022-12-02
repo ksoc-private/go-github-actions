@@ -25,10 +25,10 @@ jobs:
           fetch-depth: 0
       - name: Detect Version for Docker
         id: docker-version
-        run: echo ::set-output name=VERSION::$(SEP="-" scripts/version)
+        run: echo "VERSION=$(SEP="-" scripts/version)" >> $GITHUB_STATE
       - name: Detect Version
         id: version
-        run: echo ::set-output name=VERSION::$(scripts/version)
+        run: echo "VERSION=$(scripts/version)" >> $GITHUB_STATE
     outputs:
       docker-version: ${{ steps.docker-version.outputs.VERSION }}
       version: ${{ steps.version.outputs.VERSION }}
