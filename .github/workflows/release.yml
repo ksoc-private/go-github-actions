@@ -68,7 +68,7 @@ jobs:
           password: ${{ inputs.is-public-image && secrets.PUBLIC_GCR_JSON_KEY || secrets.PRIVATE_GCR_JSON_KEY }}
 
       - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v3
+        uses: goreleaser/goreleaser-action@v4
         with:
           version: latest
           install-only: true
