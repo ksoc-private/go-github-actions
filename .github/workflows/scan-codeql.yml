@@ -6,12 +6,14 @@ on:
       PERSONAL_ACCESS_TOKEN:
         required: true
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   scan-codeql:
     runs-on: ubuntu-latest
     permissions:
-      actions: read
-      contents: read
       security-events: write
     if: github.actor != 'dependabot[bot]'
     steps:
