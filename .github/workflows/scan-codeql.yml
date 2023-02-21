@@ -1,4 +1,4 @@
-name: test
+name: scan-codeql
 
 on:
   workflow_call:
