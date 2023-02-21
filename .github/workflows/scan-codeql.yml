@@ -1,0 +1,37 @@
+name: scan-codeql
+
+on:
+  workflow_call:
+    secrets:
+      PERSONAL_ACCESS_TOKEN:
+        required: true
+
+jobs:
+  scan-codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+          check-latest: true # https://github.com/actions/setup-go#check-latest-version
+          cache: true # https://github.com/actions/setup-go#caching-dependency-files-and-build-outputs
+        env:
+          GOPRIVATE: "github.com/ksoc-private"
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: go
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
