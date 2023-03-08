@@ -14,6 +14,9 @@ on:
       PRIVATE_GCR_JSON_KEY:
         required: true
 
+permissions:
+   contents: write # needed to write releases
+
 jobs:
   version:
     runs-on: ubuntu-latest
