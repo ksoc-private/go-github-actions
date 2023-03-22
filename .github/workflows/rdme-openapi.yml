@@ -1,0 +1,28 @@
+# readme.com API documentation, check out more details here: https://docs.readme.com/docs/rdme
+# Documentation is generated here: https://docs.ksoc.com/v2.0/reference
+name: rdme-openapi
+
+on:
+  workflow_call:
+    inputs:
+      api_definition_id:
+        type: string
+        required: true
+    secrets:
+      README_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  rdme-openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo 📚
+        uses: actions/checkout@v3
+
+      - name: Run `openapi` command 🚀
+        uses: readmeio/rdme@v8
+        with:
+          rdme: openapi pkg/router/public/docs/public_swagger.json --key=${{ secrets.README_API_KEY }} --id=${{ inputs.api_definition_id }}
