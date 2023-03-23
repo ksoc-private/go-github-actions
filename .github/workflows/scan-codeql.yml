@@ -1,20 +1,24 @@
 name: scan-codeql
 
 on:
-  workflow_call:
+  push:
+    branches: [main]
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
-
-permissions:
-  contents: read
-  actions: read
+  pull_request:
+    branches: [main]
+    secrets:
+      PERSONAL_ACCESS_TOKEN:
+        required: true
 
 jobs:
   scan-codeql:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
+      actions: read
+      contents: read
     if: github.actor != 'dependabot[bot]'
     steps:
       - name: Checkout repository
