@@ -1,13 +1,7 @@
 name: scan-codeql
 
 on:
-  push:
-    branches: [main]
-    secrets:
-      PERSONAL_ACCESS_TOKEN:
-        required: true
-  pull_request:
-    branches: [main]
+  workflow_call:
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
