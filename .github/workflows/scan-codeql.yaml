@@ -1,0 +1,14 @@
+name: scan-codeql
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+jobs:
+  release:
+    uses: ksoc-private/go-github-actions/.github/workflows/scan-codeql.yml@main
+    secrets: inherit
