@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Reduce swagger
-        run: for p in "${{ inputs.reduce_paths }}"; do tmp=$(mktemp) && jq "del(.paths.\"$p\")" pkg/router/public/docs/public_swagger.json > "$tmp" && mv "$tmp" pkg/router/public/docs/public_swagger.json; done
+        run: paths="${{ inputs.reduce_paths }}"; for p in $paths; do tmp=$(mktemp) && jq "del(.paths.\"$p\")" pkg/router/public/docs/public_swagger.json > "$tmp" && mv "$tmp" pkg/router/public/docs/public_swagger.json; done
 
       - name: Run `openapi` command 🚀
         uses: readmeio/rdme@v8
