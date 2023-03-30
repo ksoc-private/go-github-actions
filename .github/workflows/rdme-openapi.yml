@@ -8,6 +8,9 @@ on:
       api_definition_id:
         type: string
         required: true
+      reduce_paths:
+        type: string
+        required: false
     secrets:
       README_API_KEY:
         required: true
@@ -21,6 +24,9 @@ jobs:
     steps:
       - name: Check out repo 📚
         uses: actions/checkout@v3
+
+      - name: Reduce swagger
+        run: for path in ${{ inputs.reduce_paths }}; do tmp=$(mktemp) && jq 'del(.paths."$path")' pkg/router/public/docs/public_swagger.json > "$tmp" && mv "$tmp" pkg/router/public/docs/public_swagger.json; done
 
       - name: Run `openapi` command 🚀
         uses: readmeio/rdme@v8
