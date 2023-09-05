@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo 📚
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Reduce swagger
         run: paths="${{ inputs.reduce_paths }}"; for p in $paths; do tmp=$(mktemp) && jq "del(.paths.\"$p\")" pkg/router/public/docs/public_swagger.json > "$tmp" && mv "$tmp" pkg/router/public/docs/public_swagger.json; done
