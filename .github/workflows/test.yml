@@ -21,6 +21,8 @@ jobs:
       - name: Configure git for private modules
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+        run: |
+          git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+          go get ./...
       - name: Test
         run: go test -race ./...
