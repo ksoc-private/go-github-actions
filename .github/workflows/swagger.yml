@@ -8,7 +8,7 @@ on:
 
 jobs:
   swagger:
-    name: swagger
+    name: swagger-diff-check
     runs-on: ubuntu-latest
 
     steps:
