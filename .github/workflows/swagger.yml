@@ -29,6 +29,9 @@ jobs:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
 
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@latest
+
       - name: Generate Swagger
         run: make generate-api-clients
 
