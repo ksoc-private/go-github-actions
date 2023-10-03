@@ -1,0 +1,37 @@
+name: swagger
+
+on:
+  workflow_call:
+    secrets:
+      PERSONAL_ACCESS_TOKEN:
+        required: true
+
+jobs:
+  swagger:
+    name: swagger
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          check-latest: true # https://github.com/actions/setup-go#check-latest-version
+          cache: true # https://github.com/actions/setup-go#caching-dependency-files-and-build-outputs
+        env:
+          GOPRIVATE: "github.com/ksoc-private"
+
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+
+      - name: Generate Swagger
+        run: make generate-api-clients
+
+      - name: Check for diff
+        run: make git_status_clean
+
