@@ -33,7 +33,7 @@ jobs:
         run: go install go.uber.org/mock/mockgen@latest
 
       - name: Generate Swagger
-        run: make generate-api-clients
+        run: make generate
 
       - name: Check for diff
         run: make git_status_clean
