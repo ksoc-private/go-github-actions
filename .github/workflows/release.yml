@@ -97,7 +97,7 @@ jobs:
         with:
           repostiory: ksoc-private/go-github-actions
           sparse-checkout: 'scripts/push_images.sh'
-
+          ref: update_release_script
       - name: Run manifest create and push script
         run: scripts/push_images.sh $GCR_PUBLIC_REPO_URL
         if: inputs.is-public-image
