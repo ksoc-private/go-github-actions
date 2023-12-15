@@ -19,8 +19,8 @@ for line in $images; do
     repository=$(echo "$repository_name" | cut -d '/' -f 2)
     tag=$(echo "$repository_name_with_tag" | cut -d ':' -f 2)
 
-    echo docker tag $line $1/$repository:$tag
-    echo docker push $1/$repository:$tag
+    docker tag $line $1/$repository:$tag
+    docker push $1/$repository:$tag
 
     matchingImages+=" $1/$repository:$tag"
 
