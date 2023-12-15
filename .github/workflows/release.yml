@@ -102,11 +102,11 @@ jobs:
           sparse-checkout: 'scripts/push_images.sh'
           ref: update_release_script
       - name: Run manifest create and push script
-        run: scripts/push_images.sh $GCR_PUBLIC_REPO_URL
+        run: scripts/push_images.sh $REPO_URL
         if: inputs.is-public-image
         env:
-          GCR_REPO_URL: "us.gcr.io/ksoc-public/"
-          PLUGIN_NAME: "${{inputs.service_name }}"
+          REPO_URL: "us.gcr.io/ksoc-public/"
+          SERVICE_NAME: "${{inputs.service_name }}"
 
       # Ref: https://github.com/convictional/trigger-workflow-and-wait
       - name: Update api-client-ts

@@ -3,14 +3,14 @@
 echo "Retagging and pushing images to $1"
 
 
-if [ -z "$PLUGIN_NAME" ]; then
-    echo "$PLUGIN_NAME must be defined"
+if [ -z "$SERVICE_NAME" ]; then
+    echo "SERVICE_NAME must be defined"
     exit 2;
 fi
 
 
 uniqueRepoName=$(docker image list --format "{{.Repository}}:{{.Tag}}" | grep "ksoc-guard" | cut -d'/' -f1 | sort | uniq | head -n 2)
-images=$(docker image list --format  "{{.Repository}}:{{.Tag}}" | grep "$PLUGIN_NAME" | grep "$uniqueRepoName")
+images=$(docker image list --format  "{{.Repository}}:{{.Tag}}" | grep "$SERVICE_NAME" | grep "$uniqueRepoName")
 
 for line in $images; do
     registry_id=$(echo "$line" | cut -d '.' -f 1)
