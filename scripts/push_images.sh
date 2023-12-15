@@ -13,7 +13,6 @@ uniqueRepoName=$(docker image list --format "{{.Repository}}:{{.Tag}}" | grep "k
 images=$(docker image list --format  "{{.Repository}}:{{.Tag}}" | grep "$SERVICE_NAME" | grep "$uniqueRepoName")
 
 for line in $images; do
-    registry_id=$(echo "$line" | cut -d '.' -f 1)
     repository_name_with_tag=$(echo "$line" | cut -d '/' -f 2-)
     repository_name=$(echo "$repository_name_with_tag" | cut -d ':' -f 1)
     repository=$(echo "$repository_name" | cut -d '/' -f 2)
