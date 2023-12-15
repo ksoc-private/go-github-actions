@@ -6,6 +6,9 @@ on:
       is-public-image:
         type: boolean
         required: true
+      service_name:
+        required: false
+        type: string
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
@@ -103,6 +106,7 @@ jobs:
         if: inputs.is-public-image
         env:
           GCR_REPO_URL: "us.gcr.io/ksoc-public/"
+          PLUGIN_NAME: "${{inputs.service_name }}"
 
       # Ref: https://github.com/convictional/trigger-workflow-and-wait
       - name: Update api-client-ts
