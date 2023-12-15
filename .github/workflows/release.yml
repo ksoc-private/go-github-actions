@@ -95,11 +95,10 @@ jobs:
       - name: Checkout manifest create and push script
         uses: actions/checkout@v2
         with:
-          path: '.scripts'
           sparse-checkout: 'scripts/push_images.sh'
 
       - name: Run manifest create and push script
-        run: .scripts/scripts/push_images.sh $GCR_PUBLIC_REPO_URL
+        run: scripts/push_images.sh $GCR_PUBLIC_REPO_URL
         if: inputs.is-public-image
         env:
           GCR_REPO_URL: "us.gcr.io/ksoc-public/"
