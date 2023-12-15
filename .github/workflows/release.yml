@@ -105,7 +105,7 @@ jobs:
         run: scripts/push_images.sh $REPO_URL
         if: inputs.is-public-image
         env:
-          REPO_URL: "us.gcr.io/ksoc-public/"
+          REPO_URL: "us.gcr.io/ksoc-public"
           SERVICE_NAME: ${{ inputs.service_name }}
 
       # Ref: https://github.com/convictional/trigger-workflow-and-wait
