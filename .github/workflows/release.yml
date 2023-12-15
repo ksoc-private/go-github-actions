@@ -106,7 +106,7 @@ jobs:
         if: inputs.is-public-image
         env:
           REPO_URL: "us.gcr.io/ksoc-public/"
-          SERVICE_NAME: "${{inputs.service_name }}"
+          SERVICE_NAME: ${{ inputs.service_name }}
 
       # Ref: https://github.com/convictional/trigger-workflow-and-wait
       - name: Update api-client-ts
