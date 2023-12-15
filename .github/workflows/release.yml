@@ -95,7 +95,7 @@ jobs:
       - name: Checkout manifest create and push script
         uses: actions/checkout@v2
         with:
-          repostiory: ksoc-private/go-github-actions
+          repository: ksoc-private/go-github-actions
           sparse-checkout: 'scripts/push_images.sh'
           ref: update_release_script
       - name: Run manifest create and push script
