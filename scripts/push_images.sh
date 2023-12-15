@@ -28,5 +28,5 @@ done
 
 manifestName=$(echo $matchingImages | cut -d ' ' -f 1 | sed 's/-[^-]*$//')
 
-docker manifest create $manifestName $matchingImages"
-docker manifest push $manifestName"
+docker manifest create $manifestName $matchingImages
+docker manifest push $manifestName
