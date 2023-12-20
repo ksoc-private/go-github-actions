@@ -63,7 +63,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           CURRENT_TAG: ${{ needs.version.outputs.docker-version }}
-          DOCKER_REGISTRY: us.gcr.io
+          REGISTRY: us.gcr.io/ksoc-public
           BRANCH: ${{ github.base_ref }}
           COMMIT: ${{ github.sha }}
           VERSION: ${{ needs.version.outputs.version }}
