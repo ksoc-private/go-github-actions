@@ -6,9 +6,6 @@ on:
       is-public-image:
         type: boolean
         required: true
-      service_name:
-        required: false
-        type: string
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
@@ -51,10 +48,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
@@ -95,18 +89,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ needs.version.outputs.docker-version }}
 
-      - name: Checkout manifest create and push script
-        uses: actions/checkout@v2
-        with:
-          repository: ksoc-private/go-github-actions
-          sparse-checkout: 'scripts/push_images.sh'
-          ref: update_release_script
-      - name: Run manifest create and push script
-        run: scripts/push_images.sh $REPO_URL
-        if: inputs.is-public-image
-        env:
-          REPO_URL: "us.gcr.io/ksoc-public"
-          SERVICE_NAME: ${{ inputs.service_name }}
+      - name: Push Snapshot Docker Image
+        if: startsWith(github.ref , 'refs/tags/v') == false
+        run: |
+          make docker_push_all
 
       # Ref: https://github.com/convictional/trigger-workflow-and-wait
       - name: Update api-client-ts

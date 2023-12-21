@@ -2,10 +2,6 @@ name: build-images-public
 
 on:
   workflow_call:
-    inputs:
-      service_name:
-        required: false
-        type: string
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
