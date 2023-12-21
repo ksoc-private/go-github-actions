@@ -62,7 +62,7 @@ jobs:
         run: make build_image
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          CURRENT_TAG: ${{ needs.version.outputs.docker-version }}
+          GITHUB_REF: ${{ github.ref }}
           REGISTRY: us.gcr.io/ksoc-public
           BRANCH: ${{ github.base_ref }}
           COMMIT: ${{ github.sha }}
