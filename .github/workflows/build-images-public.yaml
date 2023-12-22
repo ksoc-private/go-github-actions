@@ -12,7 +12,7 @@ permissions:
    contents: write # needed to write releases
 
 jobs:
-  version:
+  build_image:
     runs-on: ubuntu-latest
     if: startsWith(github.head_ref, 'renovate') == false
     steps:
@@ -20,30 +20,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Detect Version for Docker
-        id: docker-version
-        run: echo "VERSION=$(SEP="-" scripts/version)" >> $GITHUB_OUTPUT
-      - name: Detect Version
-        id: version
-        run: echo "VERSION=$(scripts/version)" >> $GITHUB_OUTPUT
-    outputs:
-      docker-version: ${{ steps.docker-version.outputs.VERSION }}
-      version: ${{ steps.version.outputs.VERSION }}
 
-  build_image:
-    runs-on: ubuntu-latest
-    needs:
-      - version
-    env:
-      SUMMARY: ${{ needs.version.outputs.docker-version }}
-      VERSION: ${{ needs.version.outputs.version }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -62,15 +42,3 @@ jobs:
           REGISTRY: us.gcr.io/ksoc-public
           BRANCH: ${{ github.base_ref }}
           COMMIT: ${{ github.sha }}
-          VERSION: ${{ needs.version.outputs.version }}
-
-      # Ref: https://github.com/convictional/trigger-workflow-and-wait
-      - name: Update api-client-ts
-        if: startsWith(github.ref , 'refs/tags/v') == true
-        uses: convictional/trigger-workflow-and-wait@v1.6.5
-        with:
-          owner: ksoc-private
-          repo: api-client-ts
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          workflow_file_name: draft-release.yml
-          wait_workflow: false
