@@ -8,9 +8,6 @@ on:
       AWS_GITHUB_RUNNER_SECRET_KEY:
         required: true
 
-permissions:
-    contents: write # needed to write releases
-
 jobs:
   build-marketplace-ecr-images:
     name: Test Role Auth
