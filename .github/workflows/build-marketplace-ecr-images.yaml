@@ -12,6 +12,7 @@ jobs:
   build-marketplace-ecr-images:
     name: Test Role Auth
     runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'renovate') == false
     steps:
     - name: Checkout
       uses: actions/checkout@v3
