@@ -18,12 +18,14 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Echo
-      run: echo access $AWS_ACCESS_KEY_ID secret $AWS_SECRET_KEY
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
-        AWS_SECRET_KEY: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
-    - name: Configure AWS credentials from Test account
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Assume Marketplace Integration Role
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: arn:aws:iam::392256805076:role/manage-marketplace-ecr
@@ -31,6 +33,19 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
         aws-secret-access-key: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
         aws-region: us-east-1
+    
     - name: get caller identity
-      run: |
-        aws sts get-caller-identity
+      run: aws sts get-caller-identity
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build ECR Image
+      run: make build_image
+      env:
+        GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        GITHUB_REF: ${{ github.ref }}
+        REGISTRY: 709825985650.dkr.ecr.us-east-1.amazonaws.com/ksoc-labs
+        BRANCH: ${{ github.base_ref }}
+        COMMIT: ${{ github.sha }}
