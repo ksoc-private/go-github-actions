@@ -3,9 +3,9 @@ name: build-marketplace-ecr-images
 on:
   workflow_call:
     secrets:
-      AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_ACCESS_KEY_ID:
+      AWS_GITHUB_RUNNER_ACCESS_KEY:
         required: true
-      AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_SECRET_ACCESS_KEY:
+      AWS_GITHUB_RUNNER_SECRET_KEY:
         required: true
 
 permissions:
@@ -21,15 +21,15 @@ jobs:
     - name: Echo
       run: echo access $AWS_ACCESS_KEY_ID secret $AWS_SECRET_KEY
       env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_ACCESS_KEY_ID }}
-        AWS_SECRET_KEY: ${{ secrets.AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_SECRET_ACCESS_KEY }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
     - name: Configure AWS credentials from Test account
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: arn:aws:iam::392256805076:role/manage-marketplace-ecr
         role-session-name: github-action-build-images
-        aws-access-key-id: ${{ secrets.AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_SECRET_ACCESS_KEY }}
+        aws-access-key-id: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
         aws-region: us-east-1
     - name: get caller identity
       run: |
