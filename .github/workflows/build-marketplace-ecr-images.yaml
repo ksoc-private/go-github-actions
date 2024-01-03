@@ -1,0 +1,30 @@
+name: build-marketplace-ecr-images
+
+on:
+    workflow_call:
+
+permissions:
+    contents: write # needed to write releases
+
+jobs:
+  build-marketplace-ecr-images:
+    name: Test Role Auth
+    runs-on: ubuntu-latest
+    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Configure AWS credentials from Test account
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::392256805076:role/manage-marketplace-ecr
+        role-session-name: github-action-build-images
+        aws-access-key-id: ${{ secrets.AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    - name: get caller identity
+      run: |
+        aws sts get-caller-identity
