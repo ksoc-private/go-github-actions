@@ -13,6 +13,11 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+    - name: Echo
+      run: echo access $AWS_ACCESS_KEY_ID secret $AWS_SECRET_KEY
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_ACCESS_KEY_ID }}
+        AWS_SECRET_KEY: ${{ secrets.AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_SECRET_ACCESS_KEY }}
     - name: Configure AWS credentials from Test account
       uses: aws-actions/configure-aws-credentials@v4
       with:
