@@ -1,7 +1,7 @@
 name: build-marketplace-ecr-images
 
 on:
-    workflow_call:
+  workflow_call:
 
 permissions:
     contents: write # needed to write releases
@@ -10,10 +10,6 @@ jobs:
   build-marketplace-ecr-images:
     name: Test Role Auth
     runs-on: ubuntu-latest
-    # These permissions are needed to interact with GitHub's OIDC Token endpoint.
-    permissions:
-      id-token: write
-      contents: read
     steps:
     - name: Checkout
       uses: actions/checkout@v3
