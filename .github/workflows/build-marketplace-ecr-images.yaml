@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-marketplace-ecr-images:
-    name: Test Role Auth
+    name: Build AWS Marketplace ECR Image
     runs-on: ubuntu-latest
     if: startsWith(github.head_ref, 'renovate') == false
     steps:
