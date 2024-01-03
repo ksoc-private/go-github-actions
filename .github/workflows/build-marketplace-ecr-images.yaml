@@ -30,9 +30,6 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
         aws-secret-access-key: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
         aws-region: us-east-1
-    
-    - name: get caller identity
-      run: aws sts get-caller-identity
 
     - name: Login to Amazon ECR
       id: login-ecr
