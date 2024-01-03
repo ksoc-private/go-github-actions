@@ -2,6 +2,11 @@ name: build-marketplace-ecr-images
 
 on:
   workflow_call:
+    secrets:
+      AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_ACCESS_KEY_ID:
+        required: true
+      AWS_PLATFORM_ENGINEERING_ORCHESTRATION_GITHUB_ACTIONS_SECRET_ACCESS_KEY:
+        required: true
 
 permissions:
     contents: write # needed to write releases
