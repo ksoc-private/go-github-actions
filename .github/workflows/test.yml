@@ -5,6 +5,12 @@ on:
     secrets:
       PERSONAL_ACCESS_TOKEN:
         required: true
+    inputs:
+      testpkgs:
+        description: 'The Go packages to test as a space seperated list (can use the go ... expansion'
+        default: './...'
+        required: false
+        type: string
 
 jobs:
   test:
@@ -23,4 +29,4 @@ jobs:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: Test
-        run: go test -short -race ./...
+        run: go test -short -race ${{ inputs.testpkgs }}
