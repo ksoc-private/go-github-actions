@@ -1,0 +1,52 @@
+name: build-public-ecr-images
+
+on:
+  workflow_call:
+    secrets:
+      AWS_GITHUB_RUNNER_ACCESS_KEY:
+        required: true
+      AWS_GITHUB_RUNNER_SECRET_KEY:
+        required: true
+    inputs:
+      ecr_registry:
+        description: 'Name of ECR Registry to push images to'
+        required: false
+        type: string
+        default: 'public.ecr.aws/n8h5y2v5/rad-security'
+
+permissions:
+  contents: write
+
+jobs:
+  build-public-images:
+    name: Build Public ECR Image
+    runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'renovate') == false
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Amazon ECR Public
+      id: login-ecr-public
+      uses: aws-actions/amazon-ecr-login@v2
+      with:
+        registry-type: public
+      env:
+        AWS_REGION: us-east-1
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
+
+    - name: Build ECR Image
+      run: make build_image
+      env:
+        GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        GITHUB_REF: ${{ github.ref }}
+        REGISTRY: ${{ inputs.ecr_registry }}
+        BRANCH: ${{ github.base_ref }}
+        COMMIT: ${{ github.sha }}
