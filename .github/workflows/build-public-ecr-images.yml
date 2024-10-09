@@ -7,12 +7,11 @@ on:
         required: true
       AWS_GITHUB_RUNNER_SECRET_KEY:
         required: true
-
-inputs:
-  ecr_registry:
-    description: 'Name of ECR Registry to push images to'
-    required: false
-    default: 'public.ecr.aws/n8h5y2v5/rad-security'
+  inputs:
+    ecr_registry:
+      description: 'Name of ECR Registry to push images to'
+      required: false
+      default: 'public.ecr.aws/n8h5y2v5/rad-security'
 
 permissions:
   contents: write
