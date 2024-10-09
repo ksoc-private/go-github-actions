@@ -11,6 +11,7 @@ on:
       ecr_registry:
         description: 'Name of ECR Registry to push images to'
         required: false
+        type: string
         default: 'public.ecr.aws/n8h5y2v5/rad-security'
 
 permissions:
