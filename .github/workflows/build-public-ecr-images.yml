@@ -31,9 +31,10 @@ jobs:
       uses: aws-actions/amazon-ecr-login@v2
       with:
         registry-type: public
-        aws-region: us-east-1
-        aws-access-key-id: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
-        aws-secret-access-key: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
+      env:
+        AWS_REGION: us-east-1
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
 
     - name: Build ECR Image
       run: make build_image
