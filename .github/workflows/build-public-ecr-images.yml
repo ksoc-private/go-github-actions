@@ -52,3 +52,9 @@ jobs:
         REGISTRY: ${{ inputs.ecr_registry }}
         BRANCH: ${{ github.base_ref }}
         COMMIT: ${{ github.sha }}
+      
+    - name: "Create release"
+      if: startsWith(github.ref , 'refs/tags/v') == true
+      uses: "ergebnis/.github/actions/github/release/create@1.9.0"
+      with:
+        github-token: "${{ secrets.PERSONAL_ACCESS_TOKEN }}"
