@@ -1,0 +1,45 @@
+name: Setup ECR Private Auth
+
+on:
+  workflow_call:
+    secrets:
+      AWS_GITHUB_RUNNER_ACCESS_KEY:
+        required: true
+      AWS_GITHUB_RUNNER_SECRET_KEY:
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          check-latest: true # https://github.com/actions/setup-go#check-latest-version
+          cache: true # https://github.com/actions/setup-go#caching-dependency-files-and-build-outputs
+        env:
+          GOPRIVATE: "github.com/ksoc-private"
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+      - name: Login to Amazon ECR Private
+        id: login-ecr-private
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: private
+        env:
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
+
+
