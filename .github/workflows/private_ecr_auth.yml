@@ -1,12 +1,17 @@
 name: Setup ECR Private Auth
 
-on:
-  workflow_call:
-    secrets:
-      AWS_GITHUB_RUNNER_ACCESS_KEY:
-        required: true
-      AWS_GITHUB_RUNNER_SECRET_KEY:
-        required: true
+description: "Sets up Go and ECR Auth to build and push images"
+
+inputs:
+  AWS_GITHUB_RUNNER_ACCESS_KEY:
+    description: "AWS Access Key of Github Runner user"
+    required: true
+  AWS_GITHUB_RUNNER_SECRET_KEY:
+    description: "AWS Secret Key of Github Runner user"
+    required: true
+  GITHUB_PERSONAL_ACCESS_TOKEN:
+    description: "Github Personal Access Token to use when pulling private go modules"
+    required: true
 
 permissions:
   contents: write
@@ -30,7 +35,7 @@ jobs:
           GOPRIVATE: "github.com/ksoc-private"
       - name: Configure git for private modules
         env:
-          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          TOKEN: ${{ inputs.GITHUB_PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: Login to Amazon ECR Private
         id: login-ecr-private
@@ -39,7 +44,7 @@ jobs:
           registry-type: private
         env:
           AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ inputs.AWS_GITHUB_RUNNER_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ inputs.AWS_GITHUB_RUNNER_SECRET_KEY }}
 
 
