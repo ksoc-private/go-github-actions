@@ -5,6 +5,15 @@ on:
       - "v*"
   pull_request:
   workflow_call:
+    inputs:
+      uses-post-steps:
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      result:
+        description: "Allows the calling workflow to know when to start its steps"
+        value: ${{ jobs.publish.outputs.result }}
     secrets:
       AWS_GITHUB_RUNNER_ACCESS_KEY:
         required: true
@@ -44,4 +53,8 @@ jobs:
           AWS_REGION: us-east-1
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
+      - name: Set result output
+        id: set-result
+        run: echo "result=success" >> $GITHUB_OUTPUT
+
 
