@@ -5,15 +5,6 @@ on:
       - "v*"
   pull_request:
   workflow_call:
-    inputs:
-      uses-post-steps:
-        required: false
-        type: boolean
-        default: false
-    outputs:
-      result:
-        description: "Allows the calling workflow to know when to start its steps"
-        value: ${{ jobs.publish.outputs.result }}
     secrets:
       AWS_GITHUB_RUNNER_ACCESS_KEY:
         required: true
@@ -24,6 +15,24 @@ permissions:
   contents: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'renovate') == false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect Version for Docker
+        id: docker-version
+        run: echo "VERSION=$(SEP="-" scripts/version)" >> $GITHUB_OUTPUT
+      - name: Detect Version
+        id: version
+        run: echo "VERSION=$(scripts/version)" >> $GITHUB_OUTPUT
+    outputs:
+      docker-version: ${{ steps.docker-version.outputs.VERSION }}
+      version: ${{ steps.version.outputs.VERSION }}
+
   publish:
     name: Publish
     runs-on: ubuntu-latest
@@ -53,8 +62,29 @@ jobs:
           AWS_REGION: us-east-1
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
-      - name: Set result output
-        id: set-result
-        run: echo "result=success" >> $GITHUB_OUTPUT
 
+      - name: Release
+        if: startsWith(github.ref , 'refs/tags/v') == true
+        run: make release
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Images
+        if: startsWith(github.ref , 'refs/tags/v') == false
+        run: make images
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          CURRENT_TAG: ${{ needs.version.outputs.docker-version }}
+
+
+      # Ref: https://github.com/convictional/trigger-workflow-and-wait
+      - name: Update api-client-ts
+        if: startsWith(github.ref , 'refs/tags/v') == true
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
+        with:
+          owner: ksoc-private
+          repo: api-client-ts
+          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          workflow_file_name: draft-release.yml
+          wait_workflow: false
 
