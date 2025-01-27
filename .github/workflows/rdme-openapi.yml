@@ -11,6 +11,11 @@ on:
       reduce_paths:
         type: string
         required: false
+      spec_path:
+        description: 'The filepath of the API spec to upload'
+        default: 'pkg/router/public/docs/public_swagger.json'
+        required: false
+        type: string
     secrets:
       README_API_KEY:
         required: true
@@ -25,10 +30,14 @@ jobs:
       - name: Check out repo 📚
         uses: actions/checkout@v4
 
+      # TODO: Replace 'reduce swagger' with the below when all repos have been updated
+      #- name: Reduce spec
+        #run: tmp=$(mktemp) && rdme openapi reduce ${{ inputs.spec_path }} --path ${{ inputs.reduce_paths }} --out "$tmp" && mv "$tmp" ${{ inputs.spec_path }}
+
       - name: Reduce swagger
         run: paths="${{ inputs.reduce_paths }}"; for p in $paths; do tmp=$(mktemp) && jq "del(.paths.\"$p\")" pkg/router/public/docs/public_swagger.json > "$tmp" && mv "$tmp" pkg/router/public/docs/public_swagger.json; done
 
       - name: Run `openapi` command 🚀
         uses: readmeio/rdme@v8
         with:
-          rdme: openapi pkg/router/public/docs/public_swagger.json --key=${{ secrets.README_API_KEY }} --id=${{ inputs.api_definition_id }}
+          rdme: openapi ${{ inputs.spec_path }} --key=${{ secrets.README_API_KEY }} --id=${{ inputs.api_definition_id }}
