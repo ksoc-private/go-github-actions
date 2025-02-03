@@ -1,0 +1,66 @@
+name: Setup Marketplace ECR Auth
+description: "Sets up Go and ECR Auth to build and push images to the Marketplace ECR registries"
+
+inputs:
+  aws-access-key:
+    description: "AWS Access Key of Github Runner user"
+    required: true
+  aws-secret-key:
+    description: "AWS Secret Key of Github Runner user"
+    required: true
+  aws-marketplace-role:
+    description: "AWS Marketplace Role to assume"
+    default: arn:aws:iam::392256805076:role/manage-marketplace-ecr
+  aws-region:
+    description: "AWS Region to use"
+    default: "us-east-1"
+  github-pat:
+    description: "Github Personal Access Token to use when pulling private go modules"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        check-latest: true
+        cache: true
+      env:
+        GOPRIVATE: "github.com/ksoc-private"
+        
+    - name: Configure git for private modules
+      shell: bash
+      env:
+        TOKEN: ${{ inputs.github-pat }}
+      run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+
+    - name: Assume Marketplace Integration Role
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_MARKETPLACE_ROLE }}
+        role-session-name: github-action-build-images
+        aws-access-key-id: ${{ secrets.AWS_GITHUB_RUNNER_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_GITHUB_RUNNER_SECRET_KEY }}
+        aws-region: ${{ vars.AWS_MARKETPLACE_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      with:
+        registries: ${{ vars.AWS_MARKETPLACE_REGISTRY_ACCOUNT_ID }}
+
+    - name: Build ECR Image
+      run: make build_image
+      env:
+        GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        GITHUB_REF: ${{ github.ref }}
+        REGISTRY: ${{ vars.AWS_MARKETPLACE_REGISTRY }}
+        BRANCH: ${{ github.base_ref }}
+        COMMIT: ${{ github.sha }}
