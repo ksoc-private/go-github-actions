@@ -11,6 +11,9 @@ inputs:
   aws-marketplace-role:
     description: "AWS Marketplace Role to assume"
     default: arn:aws:iam::392256805076:role/manage-marketplace-ecr
+  aws-marketplace-registry-account-id:
+    description: "AWS Marketplace Registry Account ID"
+    default: 709825985650
   aws-region:
     description: "AWS Region to use"
     default: "us-east-1"
@@ -44,23 +47,14 @@ runs:
     - name: Assume Marketplace Integration Role
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ vars.AWS_MARKETPLACE_ROLE }}
+        role-to-assume: ${{ inputs.aws-marketplace-role }}
         role-session-name: github-action-build-images
-        aws-access-key-id: ${{ inputs.AWS_GITHUB_RUNNER_ACCESS_KEY }}
-        aws-secret-access-key: ${{ inputs.AWS_GITHUB_RUNNER_SECRET_KEY }}
-        aws-region: ${{ vars.AWS_MARKETPLACE_REGION }}
+        aws-access-key-id: ${{ inputs.aws-access-key }}
+        aws-secret-access-key: ${{ inputs.aws-secret-key }}
+        aws-region: ${{ inputs.aws-region }}
 
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
       with:
-        registries: ${{ vars.AWS_MARKETPLACE_REGISTRY_ACCOUNT_ID }}
-
-    - name: Build ECR Image
-      run: make build_image
-      env:
-        GITHUB_TOKEN: ${{ inputs.PERSONAL_ACCESS_TOKEN }}
-        GITHUB_REF: ${{ github.ref }}
-        REGISTRY: ${{ vars.AWS_MARKETPLACE_REGISTRY }}
-        BRANCH: ${{ github.base_ref }}
-        COMMIT: ${{ github.sha }}
+        registries: ${{ inputs.aws-marketplace-registry-account-id }}
