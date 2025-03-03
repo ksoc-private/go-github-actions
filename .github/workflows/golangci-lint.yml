@@ -47,5 +47,5 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v5
         with:
-          version: v1.60
+          version: v1.64
           args: --timeout=${{ inputs.timeout }}
