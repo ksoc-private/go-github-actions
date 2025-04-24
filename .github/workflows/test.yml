@@ -16,10 +16,18 @@ on:
         default: 'go.sum'
         required: false
         type: string
+      workingdir:
+        description: 'working directory, used for monorepos. Default is .'
+        default: '.'
+        required: false
+        type: string
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.workingdir }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

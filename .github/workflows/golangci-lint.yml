@@ -16,6 +16,11 @@ on:
         default: '5m'
         required: false
         type: string
+      workingdir:
+        description: 'working directory, used for monorepos. Default is .'
+        default: '.'
+        required: false
+        type: string
 
 permissions:
   # Required: allow read access to the content for analysis.
@@ -48,4 +53,5 @@ jobs:
         uses: golangci/golangci-lint-action@v5
         with:
           version: v1.64
+          working-directory: ${{ inputs.workingdir }}
           args: --timeout=${{ inputs.timeout }}
