@@ -12,8 +12,8 @@ on:
         required: false
         type: string
       timeout:
-        description: 'timeout for lint action, default is 5m'
-        default: '5m'
+        description: 'timeout for lint action, default is 20m'
+        default: '20m'
         required: false
         type: string
       workingdir:
