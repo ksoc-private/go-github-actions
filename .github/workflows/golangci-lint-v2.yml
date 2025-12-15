@@ -50,7 +50,7 @@ jobs:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.4
           working-directory: ${{ inputs.workingdir }}
