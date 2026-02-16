@@ -52,6 +52,6 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.4
+          version: v2.9
           working-directory: ${{ inputs.workingdir }}
           args: --timeout=${{ inputs.timeout }}
