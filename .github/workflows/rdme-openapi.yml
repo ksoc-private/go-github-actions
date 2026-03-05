@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo 📚
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # TODO: Replace 'reduce swagger' with the below when all repos have been updated
       #- name: Reduce spec
