@@ -38,6 +38,6 @@ jobs:
         run: paths="${{ inputs.reduce_paths }}"; for p in $paths; do tmp=$(mktemp) && jq "del(.paths.\"$p\")" pkg/router/public/docs/public_swagger.json > "$tmp" && mv "$tmp" pkg/router/public/docs/public_swagger.json; done
 
       - name: Run `openapi` command 🚀
-        uses: readmeio/rdme@v8
+        uses: readmeio/rdme@v10
         with:
           rdme: openapi ${{ inputs.spec_path }} --key=${{ secrets.README_API_KEY }} --id=${{ inputs.api_definition_id }}
