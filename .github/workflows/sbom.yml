@@ -39,6 +39,11 @@ on:
         default: '.license-exceptions.yaml'
         required: false
         type: string
+      auto-merge:
+        description: 'Merge the SBOM PR with the GitHub App when it only changes the SBOM'
+        default: true
+        required: false
+        type: boolean
 
 permissions:
   contents: write # push the sbom branch
@@ -125,8 +130,10 @@ jobs:
           SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           id=$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)
+          echo "email=${id}+${SLUG}[bot]@users.noreply.github.com" >> "$GITHUB_OUTPUT"
           echo "identity=${SLUG}[bot] <${id}+${SLUG}[bot]@users.noreply.github.com>" >> "$GITHUB_OUTPUT"
       - name: Open SBOM pull request
+        id: cpr
         if: github.event_name != 'pull_request'
         uses: peter-evans/create-pull-request@v8.1.1
         with:
@@ -140,6 +147,31 @@ jobs:
           commit-message: Update SBOM
           title: Update SBOM
           body: Regenerated `${{ inputs.output }}` with Syft after a dependency change.
+      # The app may bypass required reviews on the default branch (branch protection setting),
+      # but only merges PRs that change nothing except the SBOM and contain only its own commits.
+      # Anything else is left for a human.
+      - name: Merge SBOM pull request
+        if: >-
+          inputs.auto-merge && steps.bot.outputs.email != '' &&
+          (steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated')
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR: ${{ steps.cpr.outputs.pull-request-number }}
+          SBOM_PATH: ${{ inputs.output }}
+          BOT_EMAIL: ${{ steps.bot.outputs.email }}
+        run: |
+          pr_api="repos/${GITHUB_REPOSITORY}/pulls/${PR}"
+          files=$(gh api --paginate "${pr_api}/files" --jq '.[].filename' | paste -sd, -)
+          others=$(gh api --paginate "${pr_api}/commits" --jq '.[] | .commit.author.email, .commit.committer.email' | grep -cvxF "$BOT_EMAIL" || true)
+          if [ "$files" != "$SBOM_PATH" ] || [ "$others" -ne 0 ]; then
+            echo "SBOM PR #${PR} changes ${files} or has commits from others; left for review." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if gh api -X PUT "${pr_api}/merge" -f merge_method=squash --silent; then
+            echo "Merged SBOM PR #${PR}." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Could not merge SBOM PR #${PR} (is the app allowed to bypass required reviews on the default branch?); left for review." >> "$GITHUB_STEP_SUMMARY"
+          fi
       # Last step so a license failure does not stop the SBOM PR from being opened.
       # Reads the /tmp copy: create-pull-request restores the base branch's files.
       - name: Check licenses
