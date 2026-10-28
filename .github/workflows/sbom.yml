@@ -4,6 +4,9 @@ name: SBOM
 # sbom/sbom.cdx.json through a pull request when dependencies change, and
 # reports critical/high vulnerabilities from Grype in the job summary.
 # Grype honours a .grype.yaml in the repository root (risk acceptances).
+# Fails when a dependency has a GPL/AGPL/LGPL/SSPL or unknown license that
+# is not justified in .license-exceptions.yaml.
+# On pull_request events it only checks; the SBOM PR is opened from main.
 
 on:
   workflow_call:
@@ -29,6 +32,11 @@ on:
       cache-sum-files:
         description: 'Glob pattern to go.sum files in the repo, for multi-module repos'
         default: 'go.sum'
+        required: false
+        type: string
+      license-exceptions:
+        description: 'Path of the license exceptions file'
+        default: '.license-exceptions.yaml'
         required: false
         type: string
 
@@ -102,12 +110,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Get app token
         id: app-token
-        if: env.HAS_APP == 'true'
+        if: env.HAS_APP == 'true' && github.event_name != 'pull_request'
         uses: actions/create-github-app-token@v3.3.0
         with:
           app-id: ${{ secrets.SBOM_APP_ID }}
           private-key: ${{ secrets.SBOM_APP_PRIVATE_KEY }}
       - name: Open SBOM pull request
+        if: github.event_name != 'pull_request'
         uses: peter-evans/create-pull-request@v8.1.1
         with:
           token: ${{ steps.app-token.outputs.token || github.token }}
@@ -117,3 +126,49 @@ jobs:
           commit-message: Update SBOM
           title: Update SBOM
           body: Regenerated `${{ inputs.output }}` with Syft after a dependency change.
+      # Last step so a license failure does not stop the SBOM PR from being opened
+      - name: Check licenses
+        env:
+          SBOM: ${{ inputs.output }}
+          EXCEPTIONS: ${{ inputs.license-exceptions }}
+        run: |
+          if [ -f "$EXCEPTIONS" ]; then
+            yq -o=json '.exceptions // []' "$EXCEPTIONS" > /tmp/license-exceptions.json
+          else
+            echo '[]' > /tmp/license-exceptions.json
+          fi
+
+          # GitHub Actions (pkg:github) only run in CI and are not distributed, so they are skipped.
+          # Unidentified license texts show up as sha256:... and only count when nothing else was identified.
+          jq --slurpfile ex /tmp/license-exceptions.json '
+            def glob: "^" + (gsub("\\."; "\\.") | gsub("\\*"; ".*")) + "$";
+            [ .components[]
+              | select(.type == "library" and ((.purl // "") | startswith("pkg:github/") | not))
+              | { name, version,
+                  licenses: ([.licenses[]? | .license.id // .license.name // .expression]
+                             | map(select(startswith("sha256:") | not)) | unique) }
+              | .class = (
+                  if (.licenses | length) == 0 then "deny"
+                  elif any(.licenses[]; test("^(A?GPL|LGPL|SSPL)"; "i")) then "deny"
+                  elif any(.licenses[]; test("^(MPL|EPL|CDDL)"; "i")) then "warn"
+                  else "allow" end)
+              | select(.class != "allow")
+              | . as $c
+              | .exception = (first($ex[0][] | select(.package as $p | $c.name | test($p | glob))) // null)
+            ]' "$SBOM" > /tmp/license-findings.json
+
+          {
+            echo "### License check"
+            echo
+            echo "| Result | Package | Version | License | Exception |"
+            echo "|---|---|---|---|---|"
+            jq -r '.[] | "| \(if .exception then "excepted" elif .class == "deny" then "**fail**" else "warn" end) | \(.name) | \(.version) | \(if .licenses == [] then "unknown" else .licenses | join(", ") end) | \(.exception.reason // "") |"' /tmp/license-findings.json
+            echo
+            jq -r --arg today "$(date -u +%F)" '.[] | select(.exception.review != null and .exception.review < $today) | "Exception for \(.name) passed its review date (\(.exception.review[:10]))."' /tmp/license-findings.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          failed=$(jq '[.[] | select(.class == "deny" and .exception == null)] | length' /tmp/license-findings.json)
+          if [ "$failed" -gt 0 ]; then
+            jq -r '.[] | select(.class == "deny" and .exception == null) | "::error::\(.name)@\(.version): \(if .licenses == [] then "unknown" else .licenses | join(", ") end) license needs replacing or an entry in \(env.EXCEPTIONS)"' /tmp/license-findings.json
+            exit 1
+          fi
