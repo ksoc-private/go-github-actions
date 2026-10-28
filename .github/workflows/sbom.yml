@@ -1,0 +1,189 @@
+name: SBOM
+
+# Generates a CycloneDX SBOM of the repository with Syft, commits it to
+# sbom/sbom.cdx.json through a pull request when dependencies change, and
+# reports critical/high vulnerabilities from Grype in the job summary.
+# Grype honours a .grype.yaml in the repository root (risk acceptances).
+# Fails when a dependency has a GPL/AGPL/LGPL/SSPL or unknown license that
+# is not justified in .license-exceptions.yaml.
+# On pull_request events it only checks; the SBOM PR is opened from main.
+
+on:
+  workflow_call:
+    secrets:
+      PERSONAL_ACCESS_TOKEN:
+        required: true
+      SBOM_APP_ID:
+        description: 'GitHub App ID used to open the SBOM PR. Falls back to GITHUB_TOKEN if unset (CI checks will not run on the PR).'
+        required: false
+      SBOM_APP_PRIVATE_KEY:
+        required: false
+    inputs:
+      path:
+        description: 'Directory to scan'
+        default: '.'
+        required: false
+        type: string
+      output:
+        description: 'Path of the committed SBOM file'
+        default: 'sbom/sbom.cdx.json'
+        required: false
+        type: string
+      cache-sum-files:
+        description: 'Glob pattern to go.sum files in the repo, for multi-module repos'
+        default: 'go.sum'
+        required: false
+        type: string
+      license-exceptions:
+        description: 'Path of the license exceptions file'
+        default: '.license-exceptions.yaml'
+        required: false
+        type: string
+
+permissions:
+  contents: write # push the sbom branch
+  pull-requests: write # open the sbom PR
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    env:
+      HAS_APP: ${{ secrets.SBOM_APP_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        if: hashFiles('**/go.mod') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          check-latest: true # https://github.com/actions/setup-go#check-latest-version
+          cache: true # https://github.com/actions/setup-go#caching-dependency-files-and-build-outputs
+          cache-dependency-path: ${{ inputs.cache-sum-files }}
+        env:
+          GOPRIVATE: "github.com/ksoc-private"
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+      # Syft reads licenses of Go modules from the module cache
+      - name: Download Go modules
+        if: hashFiles('**/go.mod') != ''
+        working-directory: ${{ inputs.path }}
+        env:
+          GOPRIVATE: "github.com/ksoc-private"
+        run: go mod download
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.24.3
+        with:
+          path: ${{ inputs.path }}
+          format: cyclonedx-json
+          output-file: /tmp/sbom.raw.json
+          syft-version: v1.55.0 # pinned so tool upgrades do not churn the committed file
+          upload-artifact: false
+          upload-release-assets: false
+        env:
+          SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES: "true"
+      # Drop per-run fields so the file only changes when dependencies do
+      - name: Normalize SBOM
+        run: |
+          mkdir -p "$(dirname '${{ inputs.output }}')"
+          jq -S 'del(.serialNumber, .metadata.timestamp)' /tmp/sbom.raw.json > /tmp/sbom.json
+          cp /tmp/sbom.json '${{ inputs.output }}'
+      - name: Scan for vulnerabilities
+        id: scan
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: ${{ inputs.output }}
+          fail-build: false
+          output-format: json
+      - name: Report critical and high vulnerabilities
+        env:
+          REPORT: ${{ steps.scan.outputs.json }}
+        run: |
+          {
+            echo "### Critical and high vulnerabilities"
+            echo
+            echo "| Severity | Package | Version | ID | Fixed in |"
+            echo "|---|---|---|---|---|"
+            jq -r '.matches[]
+              | select(.vulnerability.severity == "Critical" or .vulnerability.severity == "High")
+              | "| \(.vulnerability.severity) | \(.artifact.name) | \(.artifact.version) | \(.vulnerability.id) | \(.vulnerability.fix.versions | join(", ")) |"' "$REPORT" | sort -u
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Get app token
+        id: app-token
+        if: env.HAS_APP == 'true' && github.event_name != 'pull_request'
+        uses: actions/create-github-app-token@v3.3.0
+        with:
+          app-id: ${{ secrets.SBOM_APP_ID }}
+          private-key: ${{ secrets.SBOM_APP_PRIVATE_KEY }}
+      # Commit as the app's bot user so the sign-off matches the author (DCO)
+      - name: Get app bot identity
+        id: bot
+        if: steps.app-token.outputs.token != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          id=$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)
+          echo "identity=${SLUG}[bot] <${id}+${SLUG}[bot]@users.noreply.github.com>" >> "$GITHUB_OUTPUT"
+      - name: Open SBOM pull request
+        if: github.event_name != 'pull_request'
+        uses: peter-evans/create-pull-request@v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
+          author: ${{ steps.bot.outputs.identity || 'github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>' }}
+          committer: ${{ steps.bot.outputs.identity || 'github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>' }}
+          signoff: true
+          add-paths: ${{ inputs.output }}
+          branch: chore/sbom
+          delete-branch: true
+          commit-message: Update SBOM
+          title: Update SBOM
+          body: Regenerated `${{ inputs.output }}` with Syft after a dependency change.
+      # Last step so a license failure does not stop the SBOM PR from being opened.
+      # Reads the /tmp copy: create-pull-request restores the base branch's files.
+      - name: Check licenses
+        env:
+          SBOM: /tmp/sbom.json
+          EXCEPTIONS: ${{ inputs.license-exceptions }}
+        run: |
+          if [ -f "$EXCEPTIONS" ]; then
+            yq -o=json '.exceptions // []' "$EXCEPTIONS" > /tmp/license-exceptions.json
+          else
+            echo '[]' > /tmp/license-exceptions.json
+          fi
+
+          # GitHub Actions (pkg:github) only run in CI and are not distributed, so they are skipped.
+          # Unidentified license texts show up as sha256:... and only count when nothing else was identified.
+          jq --slurpfile ex /tmp/license-exceptions.json '
+            def glob: "^" + (gsub("\\."; "\\.") | gsub("\\*"; ".*")) + "$";
+            [ .components[]
+              | select(.type == "library" and ((.purl // "") | startswith("pkg:github/") | not))
+              | { name, version,
+                  licenses: ([.licenses[]? | .license.id // .license.name // .expression]
+                             | map(select(startswith("sha256:") | not)) | unique) }
+              | .class = (
+                  if (.licenses | length) == 0 then "deny"
+                  elif any(.licenses[]; test("^(A?GPL|LGPL|SSPL)"; "i")) then "deny"
+                  elif any(.licenses[]; test("^(MPL|EPL|CDDL)"; "i")) then "warn"
+                  else "allow" end)
+              | select(.class != "allow")
+              | . as $c
+              | .exception = (first($ex[0][] | select(.package as $p | $c.name | test($p | glob))) // null)
+            ]' "$SBOM" > /tmp/license-findings.json
+
+          {
+            echo "### License check"
+            echo
+            echo "| Result | Package | Version | License | Exception |"
+            echo "|---|---|---|---|---|"
+            jq -r '.[] | "| \(if .exception then "excepted" elif .class == "deny" then "**fail**" else "warn" end) | \(.name) | \(.version) | \(if .licenses == [] then "unknown" else .licenses | join(", ") end) | \(.exception.reason // "") |"' /tmp/license-findings.json
+            echo
+            jq -r --arg today "$(date -u +%F)" '.[] | select(.exception.review != null and .exception.review < $today) | "Exception for \(.name) passed its review date (\(.exception.review[:10]))."' /tmp/license-findings.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          failed=$(jq '[.[] | select(.class == "deny" and .exception == null)] | length' /tmp/license-findings.json)
+          if [ "$failed" -gt 0 ]; then
+            jq -r '.[] | select(.class == "deny" and .exception == null) | "::error::\(.name)@\(.version): \(if .licenses == [] then "unknown" else .licenses | join(", ") end) license needs replacing or an entry in \(env.EXCEPTIONS)"' /tmp/license-findings.json
+            exit 1
+          fi
