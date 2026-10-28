@@ -1,0 +1,119 @@
+name: SBOM
+
+# Generates a CycloneDX SBOM of the repository with Syft, commits it to
+# sbom/sbom.cdx.json through a pull request when dependencies change, and
+# reports critical/high vulnerabilities from Grype in the job summary.
+# Grype honours a .grype.yaml in the repository root (risk acceptances).
+
+on:
+  workflow_call:
+    secrets:
+      PERSONAL_ACCESS_TOKEN:
+        required: true
+      SBOM_APP_ID:
+        description: 'GitHub App ID used to open the SBOM PR. Falls back to GITHUB_TOKEN if unset (CI checks will not run on the PR).'
+        required: false
+      SBOM_APP_PRIVATE_KEY:
+        required: false
+    inputs:
+      path:
+        description: 'Directory to scan'
+        default: '.'
+        required: false
+        type: string
+      output:
+        description: 'Path of the committed SBOM file'
+        default: 'sbom/sbom.cdx.json'
+        required: false
+        type: string
+      cache-sum-files:
+        description: 'Glob pattern to go.sum files in the repo, for multi-module repos'
+        default: 'go.sum'
+        required: false
+        type: string
+
+permissions:
+  contents: write # push the sbom branch
+  pull-requests: write # open the sbom PR
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    env:
+      HAS_APP: ${{ secrets.SBOM_APP_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        if: hashFiles('**/go.mod') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          check-latest: true # https://github.com/actions/setup-go#check-latest-version
+          cache: true # https://github.com/actions/setup-go#caching-dependency-files-and-build-outputs
+          cache-dependency-path: ${{ inputs.cache-sum-files }}
+        env:
+          GOPRIVATE: "github.com/ksoc-private"
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
+      # Syft reads licenses of Go modules from the module cache
+      - name: Download Go modules
+        if: hashFiles('**/go.mod') != ''
+        working-directory: ${{ inputs.path }}
+        env:
+          GOPRIVATE: "github.com/ksoc-private"
+        run: go mod download
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.24.3
+        with:
+          path: ${{ inputs.path }}
+          format: cyclonedx-json
+          output-file: /tmp/sbom.raw.json
+          syft-version: v1.55.0 # pinned so tool upgrades do not churn the committed file
+          upload-artifact: false
+          upload-release-assets: false
+        env:
+          SYFT_GOLANG_SEARCH_LOCAL_MOD_CACHE_LICENSES: "true"
+      # Drop per-run fields so the file only changes when dependencies do
+      - name: Normalize SBOM
+        run: |
+          mkdir -p "$(dirname '${{ inputs.output }}')"
+          jq -S 'del(.serialNumber, .metadata.timestamp)' /tmp/sbom.raw.json > '${{ inputs.output }}'
+      - name: Scan for vulnerabilities
+        id: scan
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: ${{ inputs.output }}
+          fail-build: false
+          output-format: json
+      - name: Report critical and high vulnerabilities
+        env:
+          REPORT: ${{ steps.scan.outputs.json }}
+        run: |
+          {
+            echo "### Critical and high vulnerabilities"
+            echo
+            echo "| Severity | Package | Version | ID | Fixed in |"
+            echo "|---|---|---|---|---|"
+            jq -r '.matches[]
+              | select(.vulnerability.severity == "Critical" or .vulnerability.severity == "High")
+              | "| \(.vulnerability.severity) | \(.artifact.name) | \(.artifact.version) | \(.vulnerability.id) | \(.vulnerability.fix.versions | join(", ")) |"' "$REPORT" | sort -u
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Get app token
+        id: app-token
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@v3.3.0
+        with:
+          app-id: ${{ secrets.SBOM_APP_ID }}
+          private-key: ${{ secrets.SBOM_APP_PRIVATE_KEY }}
+      - name: Open SBOM pull request
+        uses: peter-evans/create-pull-request@v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
+          add-paths: ${{ inputs.output }}
+          branch: chore/sbom
+          delete-branch: true
+          commit-message: Update SBOM
+          title: Update SBOM
+          body: Regenerated `${{ inputs.output }}` with Syft after a dependency change.
