@@ -50,7 +50,7 @@ jobs:
     env:
       HAS_APP: ${{ secrets.SBOM_APP_ID != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Go
         if: hashFiles('**/go.mod') != ''
         uses: actions/setup-go@v5
