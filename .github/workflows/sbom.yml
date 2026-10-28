@@ -153,7 +153,7 @@ jobs:
       - name: Merge SBOM pull request
         if: >-
           inputs.auto-merge && steps.bot.outputs.email != '' &&
-          (steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated')
+          steps.cpr.outputs.pull-request-number != '' && steps.cpr.outputs.pull-request-operation != 'closed'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR: ${{ steps.cpr.outputs.pull-request-number }}
@@ -167,11 +167,15 @@ jobs:
             echo "SBOM PR #${PR} changes ${files} or has commits from others; left for review." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if gh api -X PUT "${pr_api}/merge" -f merge_method=squash --silent; then
-            echo "Merged SBOM PR #${PR}." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Could not merge SBOM PR #${PR} (is the app allowed to bypass required reviews on the default branch?); left for review." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          # Mergeability is computed asynchronously after a push, so retry a few times
+          for attempt in 1 2 3 4 5; do
+            if gh api -X PUT "${pr_api}/merge" -f merge_method=squash --silent; then
+              echo "Merged SBOM PR #${PR}." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "Could not merge SBOM PR #${PR} (is the app allowed to bypass required reviews on the default branch?); left for review." >> "$GITHUB_STEP_SUMMARY"
       # Last step so a license failure does not stop the SBOM PR from being opened.
       # Reads the /tmp copy: create-pull-request restores the base branch's files.
       - name: Check licenses
