@@ -70,13 +70,21 @@ jobs:
         env:
           TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: git config --global url."https://ksocautomator:${TOKEN}@github.com".insteadOf "https://github.com"
-      # Syft reads licenses of Go modules from the module cache
+      # Syft reads licenses of Go modules from the module cache; covers every module
+      # under the path (monorepos, nested plugins), skipping vendored copies
       - name: Download Go modules
         if: hashFiles('**/go.mod') != ''
         working-directory: ${{ inputs.path }}
         env:
           GOPRIVATE: "github.com/ksoc-private"
-        run: go mod download
+          GOFLAGS: "-mod=mod"
+        run: |
+          find . -name go.mod -not -path '*/vendor/*' -not -path '*/testdata/*' -print0 \
+            | xargs -0 -n1 dirname \
+            | while read -r dir; do
+                echo "go mod download in ${dir}"
+                (cd "${dir}" && go mod download)
+              done
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.24.3
         with:
