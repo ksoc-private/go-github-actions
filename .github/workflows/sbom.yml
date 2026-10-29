@@ -201,6 +201,13 @@ jobs:
           # Unidentified license texts show up as sha256:... and only count when nothing else was identified.
           jq --slurpfile ex /tmp/license-exceptions.json '
             def glob: "^" + (gsub("\\."; "\\.") | gsub("\\*"; ".*")) + "$";
+            # Match SPDX ids anywhere in an expression ("Apache-2.0 OR GPL-2.0") and free-text
+            # names ("GNU AFFERO GPL 3.0"), but not "GPL-compatible" in permissive license texts.
+            ("(^|[^a-z])(a?gpl|lgpl|sspl)(?![- ]compatible)([^a-z]|$)"
+             + "|gnu (affero|general public|lesser|library) |server side public") as $copyleft
+            | ("(^|[^a-z])(mpl|epl|cddl)([^a-z]|$)"
+             + "|mozilla public|eclipse public|common development and distribution") as $weak
+            |
             [ .components[]
               | select(.type == "library" and ((.purl // "") | startswith("pkg:github/") | not))
               | { name, version,
@@ -208,8 +215,8 @@ jobs:
                              | map(select(startswith("sha256:") | not)) | unique) }
               | .class = (
                   if (.licenses | length) == 0 then "deny"
-                  elif any(.licenses[]; test("^(A?GPL|LGPL|SSPL)"; "i")) then "deny"
-                  elif any(.licenses[]; test("^(MPL|EPL|CDDL)"; "i")) then "warn"
+                  elif any(.licenses[]; test($copyleft; "i")) then "deny"
+                  elif any(.licenses[]; test($weak; "i")) then "warn"
                   else "allow" end)
               | select(.class != "allow")
               | . as $c
