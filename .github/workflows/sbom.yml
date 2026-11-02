@@ -43,7 +43,7 @@ on:
         required: false
         type: string
       notices-output:
-        description: 'Path of the committed third-party notices file; empty disables it'
+        description: 'Path(s) of the committed third-party notices file, one per line (e.g. one per ko kodata directory); empty disables it'
         default: ''
         required: false
         type: string
@@ -111,7 +111,8 @@ jobs:
           jq -S 'del(.serialNumber, .metadata.timestamp)' /tmp/sbom.raw.json > /tmp/sbom.json
           cp /tmp/sbom.json '${{ inputs.output }}'
       # License texts come from the module cache filled above; identical texts are
-      # printed once with the modules they apply to. First-party modules are skipped.
+      # printed once with the modules they apply to. First-party modules are skipped
+      # unless they ship a license file (forks of open-source projects).
       - name: Generate third-party notices
         if: inputs.notices-output != ''
         env:
@@ -119,16 +120,22 @@ jobs:
           OUT: ${{ inputs.notices-output }}
         run: |
           work=$(mktemp -d)
+          outs=()
+          while read -r path; do
+            [ -n "$path" ] && outs+=("$path")
+          done <<< "$OUT"
           jq -r '.components[]
             | select(.type == "library" and ((.purl // "") | startswith("pkg:golang/")))
-            | select(.name | test("^github\\.com/(ksoc-private|rad-security)/") | not)
             | "\(.name)\t\(.version)\t\([.licenses[]? | .license.id // .license.name // .expression]
                 | map(select(startswith("sha256:") | not)) | unique | join(" AND "))"' "$SBOM" \
-            | sort -u > "$work/components.tsv"
+            | sort -u > "$work/all.tsv"
 
           : > "$work/texts.tsv"
+          license_files() { # <dir>
+            find "$1" -maxdepth 1 -type f | grep -iE '/(licen[cs]e|copying|notice|patents)([.-][^/]*)?$' | sort
+          }
           add_texts() { # <dir> <label>
-            find "$1" -maxdepth 1 -type f | grep -iE '/(licen[cs]e|copying|notice|patents)([.-][^/]*)?$' | sort \
+            license_files "$1" \
               | while read -r f; do
                   h=$(sha256sum "$f" | cut -c1-64)
                   # Module cache files are read-only, so write each distinct text once
@@ -140,16 +147,22 @@ jobs:
             modcache=$(go env GOMODCACHE)
             add_texts "$(go env GOROOT)" "Go standard library and runtime"
           fi
-          while IFS=$'\t' read -r name version _; do
+          : > "$work/components.tsv"
+          while IFS=$'\t' read -r name version licenses; do
             # The module cache escapes upper-case letters as !lower
             dir="${modcache:-}/$(printf '%s' "$name" | sed -E 's/[A-Z]/!\L&/g')@${version}"
+            if [[ "$name" =~ ^github\.com/(ksoc-private|rad-security)/ ]]; then
+              [ -d "$dir" ] && [ -n "$(license_files "$dir")" ] || continue
+            fi
+            printf '%s\t%s\t%s\n' "$name" "$version" "$licenses" >> "$work/components.tsv"
             if [ -d "$dir" ]; then
               add_texts "$dir" "${name}@${version}"
             else
-              echo "::warning::${name}@${version} is not in the module cache; its license text is missing from ${OUT}"
+              echo "::warning::${name}@${version} is not in the module cache; its license text is missing from the notices"
             fi
-          done < "$work/components.tsv"
+          done < "$work/all.tsv"
 
+          OUT=${outs[0]}
           mkdir -p "$(dirname "$OUT")"
           {
             echo "Third-party software notices"
@@ -173,7 +186,11 @@ jobs:
               cat "$work/$h"
             done
           } > "$OUT"
-          echo "Wrote ${OUT}: $(wc -l < "$work/components.tsv") components, $(cut -f1 "$work/texts.tsv" | sort -u | wc -l) distinct texts." >> "$GITHUB_STEP_SUMMARY"
+          for copy in "${outs[@]:1}"; do
+            mkdir -p "$(dirname "$copy")"
+            cp "$OUT" "$copy"
+          done
+          echo "Wrote ${outs[*]}: $(wc -l < "$work/components.tsv") components, $(cut -f1 "$work/texts.tsv" | sort -u | wc -l) distinct texts." >> "$GITHUB_STEP_SUMMARY"
       - name: Scan for vulnerabilities
         id: scan
         uses: anchore/scan-action@v7.4.2
@@ -228,7 +245,7 @@ jobs:
           delete-branch: true
           commit-message: Update SBOM
           title: Update SBOM
-          body: Regenerated `${{ inputs.output }}` with Syft after a dependency change${{ inputs.notices-output != '' && format(', and `{0}` from it', inputs.notices-output) || '' }}.
+          body: Regenerated `${{ inputs.output }}` with Syft after a dependency change${{ inputs.notices-output != '' && ', and the third-party notices from it' || '' }}.
       # The app may bypass required reviews on the default branch (branch protection setting),
       # but only merges PRs that change nothing except the SBOM (and notices) and contain only its own commits.
       # Anything else is left for a human.
@@ -245,7 +262,8 @@ jobs:
         run: |
           pr_api="repos/${GITHUB_REPOSITORY}/pulls/${PR}"
           files=$(gh api --paginate "${pr_api}/files" --jq '.[].filename' | paste -sd, -)
-          unexpected=$(printf '%s\n' "${files//,/$'\n'}" | grep -cvxF -e "$SBOM_PATH" -e "${NOTICES_PATH:-$SBOM_PATH}" || true)
+          printf '%s\n%s\n' "$SBOM_PATH" "$NOTICES_PATH" | sed -E '/^[[:space:]]*$/d; s/^[[:space:]]+|[[:space:]]+$//g' > /tmp/sbom-pr-paths
+          unexpected=$(printf '%s\n' "${files//,/$'\n'}" | grep -cvxFf /tmp/sbom-pr-paths || true)
           others=$(gh api --paginate "${pr_api}/commits" --jq '.[] | .commit.author.email, .commit.committer.email' | grep -cvxF "$BOT_EMAIL" || true)
           if [ "$unexpected" -ne 0 ] || [ "$others" -ne 0 ]; then
             echo "SBOM PR #${PR} changes ${files} or has commits from others; left for review." >> "$GITHUB_STEP_SUMMARY"
